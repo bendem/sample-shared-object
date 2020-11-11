@@ -1,0 +1,1 @@
+int some_function(int a, char* b);
