@@ -2,14 +2,15 @@ CC ?= gcc
 CFLAGS ?= -g
 #CFLAGS ?= -O3
 
-CFLAGS += -Wall -Wpedantic -Wextra
+CFLAGS += -Wall -Wpedantic -Wextra -Iinclude
 
 .PHONY: all clean run-main run-main-with-rpath
 
-all: main main-with-rpath
+all: lib/libtest.so main main-with-rpath
 
 clean:
-	rm -f main lib.so
+	find . -name 'lib*.so*' -exec rm -v {} \+
+	rm -f main main-with*
 
 run-main-with-rpath: main-with-rpath
 	./main-with-rpath
@@ -44,11 +45,19 @@ debug-main: main
 #
 #        For compatibility with other ELF linkers, if the -R option is followed by a directory name, rather than a file name, it is treated as the -rpath option.
 #
-main-with-rpath: main.c lib.so
-	$(CC) $(CFLAGS) -Wl,-rpath=. -o $@ $^
+main-with-rpath: main.c lib/libtest.so.1
+	# we use $ORIGIN (with $ escaped as $$) so the path is relative to the executable and not 
+	# the directory it is launched from (try using ./lib and `cd lib && ../main-with-rpath`).
+	$(CC) $(CFLAGS) -Wl,-rpath='$$ORIGIN/lib' -o $@ $^
 
-main: main.c lib.so
-	$(CC) $(CFLAGS) -o $@ $^
+main: main.c lib/libtest.so
+	$(CC) $(CFLAGS) -o $@ -L./lib $< -ltest
 
-%.so: %.c %.h
-	$(CC) $(CFLAGS) -shared -o $@ -fPIC $^
+lib/libtest.so: lib/libtest.so.1
+	ln -sf libtest.so.1 lib/libtest.so
+
+lib/libtest.so.1: lib/libtest.so.1.0
+	ldconfig -r lib -n .
+
+lib/libtest.so.1.0: lib/test.c include/test.h
+	$(CC) $(CFLAGS) -Wl,-soname,libtest.so.1 -shared -o $@ -fPIC $^
