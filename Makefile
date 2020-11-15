@@ -3,10 +3,12 @@ CFLAGS ?= -g
 #CFLAGS ?= -O3
 
 CFLAGS += -Wall -Wpedantic -Wextra -Iinclude
+# allows -ltest to resolve to the lib/libtest.so rule (cf https://www.gnu.org/software/make/manual/make.html#Directory-Search-for-Link-Libraries)
+VPATH = lib:.
 
 .PHONY: all clean run-main run-main-with-rpath
 
-all: lib/libtest.so main main-with-rpath
+all: main main-with-rpath
 
 clean:
 	find . -name 'lib*.so*' -exec rm -v {} \+
@@ -45,9 +47,9 @@ debug-main: main
 #
 #        For compatibility with other ELF linkers, if the -R option is followed by a directory name, rather than a file name, it is treated as the -rpath option.
 #
-main-with-rpath: main.c lib/libtest.so.1
-	# we use $ORIGIN (with $ escaped as $$) so the path is relative to the executable and not 
-	# the directory it is launched from (try using ./lib and `cd lib && ../main-with-rpath`).
+# > We use $ORIGIN (with $ escaped as $$) so the path is relative to the executable and not
+# > the directory it is launched from (try using ./lib and `cd lib && ../main-with-rpath`).
+main-with-rpath: main.c -ltest
 	$(CC) $(CFLAGS) -Wl,-rpath='$$ORIGIN/lib' -o $@ $^
 
 main: main.c lib/libtest.so
